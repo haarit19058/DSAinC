@@ -1,0 +1,301 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+
+// What the fuck is z algorithm huh ?????
+//  
+//
+// What is a Z array ??
+// For a string s Z array is of the same length as string. An element Z[i] of Z array stores length of the longest substrign starting from str[i] which is also a prefix of str[0...n-1]. THe first entry of Z array is meaning less as complete string is always prefix of itself.
+//
+
+/*
+
+   How to create a Z array ??
+
+   The idea is to maintain an interval [L,R] which is the interval with max R suh that [L,R] is prefix substring. We use previously computed values to skip comparisons.
+	The idea is to maintain Z[i] = Longest Common Prefix(s[0,i],s[i,...])
+
+	One mehtod is brute force and it would take O(n**2) time.
+
+	The idea is to maintain an interval [L, R] which is the interval with max R such that [L,R] is prefix substring (substring which is also prefix). 
+Steps for maintaining this interval are as follows – 
+1) If i > R then there is no prefix substring that starts before i and  ends after i, so we reset L and R and compute new [L,R] by comparing str[0..] to str[i..] and get Z[i] (= R-L+1).
+2) If i <= R then let K = i-L,  now Z[i] >= min(Z[K], R-i+1)  because  str[i..] matches with str[K..] for atleast R-i+1 characters (they are in  [L,R] interval which we know is a prefix substring). Now two sub cases arise – 
+      a) If Z[K] < R-i+1  then there is no prefix substring starting at str[i] (otherwise Z[K] would be larger)  so  Z[i] = Z[K]  and interval [L,R] remains same.
+      b) If Z[K] >= R-i+1 then it is possible to extend the [L,R] interval thus we will set L as i and start matching from str[R]  onwards and get new R then we will update interval [L,R] and calculate Z[i] (=R-L+1).
+
+ */
+
+
+
+//
+//
+//
+// The z algorithm is a powerful strin proecssing algorithm used to copute the length of the longest substring starting from a given position that is also a prefix of the string
+//
+// This seems like generalized version of lps array
+//
+// patter matching: to search for a pattern P in text T build the string S = P + '$' + T and compute the Z array of S. Every position i where Z[i] == |P| corresponds to an occurence of P in T.
+//Sting periodicity detection
+//Computing repitiions in strings
+//FInding borders(prefix == suffix)
+//
+//
+//
+
+
+// Z-Algorithm
+vector<int> z_function(const string& s) {
+    int n = s.size();
+    vector<int> z(n);
+    int l = 0, r = 0;
+	z[0] = 0; // it represents teh length of longest substrign starting at index 0 that is also a prefix of the string which trivially inclues the string itself. So we set it to 0.
+
+	// Here z[1] will also remain 0 
+    for(int i = 1; i < n; i++) {
+        if(i <= r)
+            z[i] = min(r - i + 1, z[i - l]);
+        while(i + z[i] < n && s[z[i]] == s[i + z[i]])
+            z[i]++;
+        if(i + z[i] - 1 > r)
+            l = i, r = i + z[i] - 1;
+    }
+    return z;
+}
+
+int main() {
+    string s;
+    cin >> s;
+    int n = s.size();
+    string rev = s;
+    reverse(rev.begin(), rev.end());
+
+    string combined = rev + '#' + s;
+    vector<int> z = z_function(combined);
+
+    vector<int> result(n);
+    for (int i = 0; i < n; ++i) {
+        // The z-value at rev.length() + 1 + i tells us the length of the
+        // longest prefix of rev (i.e., suffix of s[0..i]) that matches.
+        int len = z[rev.length() + 1 + i];
+        // Check if this prefix in reverse matches a suffix ending exactly at i
+        if (len == i + 1) result[i] = len;
+        else {
+            // Try the maximum value less than or equal to i+1
+            result[i] = 1;
+            for (int l = len; l > 0; --l) {
+                if (equal(s.begin() + i - l + 1, s.begin() + i + 1, s.rbegin() + (n - i - 1))) {
+                    result[i] = l;
+                    break;
+                }
+            }
+        }
+    }
+
+    for (int len : result)
+        cout << len << " ";
+    cout << endl;
+
+    return 0;
+}
+
+
+
+
+/*
+ #include <bits/stdc++.h>
+using namespace std;
+
+
+  We maintain an “Eertree” (palindromic tree) with two roots:
+    • node 0: length = -1, link → itself (the “odd‐length root”)
+    • node 1: length =  0, link →  0   (the “even‐length root”)
+
+  For each new character S[i], we walk up from the previous “last” node
+  until we find a palindrome P such that we can wrap S[i] around P to form
+  a larger palindrome.  If that wrapped‐around palindrome already exists
+  as a child in the tree, we just follow that edge; otherwise we create
+  a new node with length = P.len + 2, set its link appropriately, and
+  hook it in.
+  
+  At each step, “last” always points to the node representing the
+  longest palindromic suffix of S[0..i].  Its length is exactly the answer
+  for position i.
+
+  Complexity: O(n · α), where α=26 since each node has up to 26 child edges.
+  Since n ≤ 2·10^5, this is linear time in practice.
+
+
+static const int MAXN = 200000;
+
+struct EerNode {
+    int next[26];
+    int link;
+    int len;
+};
+
+int main(){
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    string S;
+    cin >> S;
+    int n = (int)S.size();
+
+    // We will allocate up to n+2 nodes:
+    //   node 0 = “length = -1” root
+    //   node 1 = “length =  0” root
+    //   nodes [2..cnt-1] = actual palindromes discovered
+    vector<EerNode> tree(n + 3);
+    // Initialize both roots
+    tree[0].len = -1;
+    tree[0].link = 0;
+    memset(tree[0].next, -1, sizeof(tree[0].next));
+    tree[1].len = 0;
+    tree[1].link = 0;
+    memset(tree[1].next, -1, sizeof(tree[1].next));
+
+    int last = 1;      // “last” = index of the node for the longest palin suffix of processed prefix
+    int cnt  = 2;      // how many nodes we’ve used so far (next free index = cnt)
+
+    vector<int> answer(n);
+
+    for(int i = 0; i < n; i++){
+        int c = S[i] - 'a';
+        int cur = last;
+
+        // 1) Jump up the suffix‐link chain until we find a palindrome P
+        //    to which we can append S[i] on both ends.  In code: check
+        //    if position (i − 1 − tree[cur].len) is ≥ 0 and S[i] == S[i − 1 − tree[cur].len].
+        while(true){
+            int curlen = tree[cur].len;
+            if (i - 1 - curlen >= 0 && S[i - 1 - curlen] == S[i]){
+                break;
+            }
+            cur = tree[cur].link;
+        }
+
+        // 2) If there is already an edge labeled c out of cur, we reuse it.
+        if (tree[cur].next[c] != -1) {
+            last = tree[cur].next[c];
+        }
+        else {
+            // Otherwise, create a new node
+            int newNode = cnt++;
+            tree[cur].next[c] = newNode;
+            tree[newNode].len = tree[cur].len + 2;
+            memset(tree[newNode].next, -1, sizeof(tree[newNode].next));
+
+            // If the new palindrome’s length is 1, its suffix link is node 1 (the “empty” palindrome).
+            if (tree[newNode].len == 1) {
+                tree[newNode].link = 1;
+            }
+            else {
+                // Otherwise, find the suffix link by jumping from cur.link until
+                // we can wrap around S[i]:
+                int temp = tree[cur].link;
+                while(true){
+                    int templen = tree[temp].len;
+                    if (i - 1 - templen >= 0 && S[i - 1 - templen] == S[i]){
+                        tree[newNode].link = tree[temp].next[c];
+                        break;
+                    }
+                    temp = tree[temp].link;
+                }
+            }
+            last = newNode;
+        }
+
+        // Now “last” indexes the node whose palindrome is the longest palindrome ending at i.
+        answer[i] = tree[last].len;
+    }
+
+    // Print the answer array:
+    for(int i = 0; i < n; i++){
+        cout << answer[i] << (i+1 < n ? ' ' : '\n');
+    }
+    return 0;
+}
+
+
+*/
+
+
+
+
+
+/**
+#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+
+vector<int> manacherLongestPalindromeEnds(const string& s) {
+    int n = s.size();
+
+    // Transform string: add separators to handle even/odd in one pass
+    string t = "@";  // Start sentinel
+    for (char c : s) {
+        t += "#";
+        t += c;
+    }
+    t += "#$";  // End sentinel
+
+    int m = t.size();
+    vector<int> p(m, 0);  // radius array
+    int center = 0, right = 0;
+
+    // Run Manacher's algorithm
+    for (int i = 1; i < m - 1; ++i) {
+        int mirror = 2 * center - i;
+        if (i < right)
+            p[i] = min(right - i, p[mirror]);
+
+        // Expand around center i
+        while (t[i + p[i] + 1] == t[i - p[i] - 1])
+            ++p[i];
+
+        // Update center and right boundary
+        if (i + p[i] > right) {
+            center = i;
+            right = i + p[i];
+        }
+    }
+
+    // Compute the longest palindrome ending at each position in original string
+    vector<int> result(n, 1);  // Every single char is at least a palindrome of length 1
+    for (int i = 1; i < m - 1; ++i) {
+        if (p[i] == 0) continue;
+
+        // Compute the original string indices
+        int start = (i - p[i]) / 2;
+        int end = (i + p[i]) / 2 - 1;
+
+        if (end < n) {
+            result[end] = max(result[end], end - start + 1);
+        }
+    }
+
+    return result;
+}
+
+int main() {
+    string s;
+    cin >> s;
+
+    vector<int> res = manacherLongestPalindromeEnds(s);
+    for (int x : res)
+        cout << x << " ";
+    cout << endl;
+
+    return 0;
+}
+
+
+
+
+ */
